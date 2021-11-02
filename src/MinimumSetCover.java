@@ -63,7 +63,8 @@ public class MinimumSetCover {
     static void addUniqueElementSets() {
         BitSet bs = uniqueElements();
         for(BitSet bitSet : s) {
-            BitSet x = (BitSet) bitSet.clone();
+            BitSet x = new BitSet();
+            x.or(bitSet);
             x.and(bs);
             if(x.cardinality()!=0) c.push(bitSet);
         }
