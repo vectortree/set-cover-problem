@@ -7,9 +7,9 @@ import java.util.stream.Stream;
 
 public class MinimumSetCover {
 
-    static ArrayDeque<BitSet> c;
-    static ArrayDeque<BitSet> sPrime;
-    static ArrayList<BitSet> s;
+    static Deque<BitSet> c;
+    static Deque<BitSet> sPrime;
+    static List<BitSet> s;
     static boolean[] added;
     static Boolean flag;
     static int universalSetSize, numberOfSubsets, bound;
@@ -33,7 +33,7 @@ public class MinimumSetCover {
     }
 
     static boolean subset(BitSet x) {
-        for (BitSet bs : s) if (subset(x, bs) == 1) return true;
+        for(BitSet bs : s) if(subset(x, bs) == 1) return true;
         return false;
     }
 
@@ -56,7 +56,8 @@ public class MinimumSetCover {
 
     static BitSet uniqueElements() {
         BitSet bs = new BitSet();
-        IntStream.range(1, universalSetSize+1).parallel().filter(i -> countOnes(i)==1).forEach(bs::set);
+        IntStream.range(1, universalSetSize+1).parallel().
+                filter(i -> countOnes(i)==1).forEachOrdered(bs::set);
         return bs;
     }
 
@@ -84,8 +85,7 @@ public class MinimumSetCover {
         }
     }
 
-    static void findMinimumSetCover(int k,
-                                    BitSet ors) {
+    static void findMinimumSetCover(int k, BitSet ors) {
         if(c.size() <= sPrime.size()) return;
         if(sPrime.size() >= bound && ors.cardinality() == universalSetSize) {
             c = new ArrayDeque<>(sPrime);
@@ -115,27 +115,34 @@ public class MinimumSetCover {
     }
 
     public static void main(String... args) {
+        System.out.println("Enter pathname of file: ");
+        Scanner scanner = new Scanner(System.in);
+        String pathName = scanner.nextLine();
+        scanner.close();
         try {
             List<String> lines =
-                    Files.readAllLines(Paths.get("/Users/starrxu/CSE373 HW4 Test Files/s-rg-63-25"));
+                    Files.readAllLines(Paths.get(pathName));
             universalSetSize = Integer.parseInt(lines.get(0));
             numberOfSubsets = Integer.parseInt(lines.get(1));
-            s = new ArrayList<>();
-            for(int i=2;i<lines.size();++i) {
+            s = Collections.synchronizedList(new ArrayList<>());
+            IntStream.range(2,lines.size()).parallel().forEach(i -> {
                 if(!lines.get(i).isEmpty()) {
                     BitSet bs = new BitSet();
-                    Stream.of(lines.get(i).split(" ")).mapToInt(Integer::parseInt).forEach(bs::set);
+                    Stream.of(lines.get(i).split(" ")).parallel().
+                            mapToInt(Integer::parseInt).forEachOrdered(bs::set);
                     s.add(bs);
                 }
                 else --numberOfSubsets;
-            }
+            });
             long startTime = System.nanoTime();
             removeRedundantSubsets();
-            s.sort(Comparator.comparingInt(BitSet::cardinality).reversed());
+            s = new ArrayList<>(s.parallelStream().
+                            sorted(Comparator.comparingInt(BitSet::cardinality).reversed()).
+                            toList());
             c = new ArrayDeque<>();
             addUniqueElementSets();
             bitMask = getBitMask();
-            sPrime = new ArrayDeque<>();
+            sPrime = new ArrayDeque<>(c);
             greedy(universalSetSize, bitMask, new ArrayList<>(s));
             //System.out.println(c);
             flag = Boolean.FALSE;
