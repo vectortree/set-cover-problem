@@ -12,7 +12,7 @@ public class MinimumSetCover {
     static List<BitSet> s;
     static boolean[] added;
     static boolean flag;
-    static int universalSetSize, numberOfSubsets, bound;
+    static int universalSetSize, numberOfSubsets, bound, lowerBound, upperBound;
     static BitSet bitMask;
 
     static int uncoveredCount(BitSet bitMask, BitSet x) {
@@ -53,7 +53,7 @@ public class MinimumSetCover {
     static BitSet uniqueElements() {
         BitSet bs = new BitSet();
         IntStream.range(1, universalSetSize+1)
-                .filter(i -> countOnes(i)==1).forEachOrdered(bs::set);
+                .filter(i -> countOnes(i)==1).forEach(bs::set);
         return bs;
     }
 
@@ -69,7 +69,7 @@ public class MinimumSetCover {
         c.forEach(bitSet -> s.remove(bitSet));
     }
 
-    static void greedy(int universalSetSize, BitSet bitSet, ArrayList<BitSet> s) {
+    static void greedy(int universalSetSize, BitSet bitSet, List<BitSet> s) {
         BitSet bitMask = new BitSet();
         bitMask.or(bitSet);
         PriorityQueue<BitSet> pq = new PriorityQueue<>((x1, x2) ->
@@ -114,6 +114,29 @@ public class MinimumSetCover {
         }
     }
 
+    static List<BitSet> findMinimumSetCover(int length,
+                                            int start,
+                                            BitSet[] combo,
+                                            BitSet bitMask) {
+        if(length == 0) {
+            if(bitMask.cardinality() == universalSetSize)
+                return List.of(combo);
+            return null;
+        }
+        int s_size = s.size();
+        BitSet newBitMask;
+        List<BitSet> solution = null;
+        for(int i=start;i<=s_size-length;++i) {
+            combo[combo.length-length] = s.get(i);
+            newBitMask = new BitSet();
+            newBitMask.or(bitMask);
+            newBitMask.or(s.get(i));
+            solution = findMinimumSetCover(length-1, i+1, combo, newBitMask);
+            if(solution != null) break;
+        }
+        return solution;
+    }
+
     public static void main(String... args) {
         System.out.println("Enter pathname of file: ");
         Scanner scanner = new Scanner(System.in);
@@ -129,7 +152,7 @@ public class MinimumSetCover {
                 if(!lines.get(i).isEmpty()) {
                     BitSet bs = new BitSet();
                     Stream.of(lines.get(i).split(" "))
-                            .mapToInt(Integer::parseInt).forEachOrdered(bs::set);
+                            .mapToInt(Integer::parseInt).forEach(bs::set);
                     s.add(bs);
                 }
                 else --numberOfSubsets;
@@ -140,15 +163,25 @@ public class MinimumSetCover {
             c = new ArrayDeque<>();
             addUniqueElementSets();
             bitMask = getBitMask();
-            sPrime = new ArrayDeque<>(c);
-            greedy(universalSetSize, bitMask, new ArrayList<>(s));
-            //System.out.println(c.size() + "\n" + c);
-            bound = (int) (c.size()/Math.log(universalSetSize));
-            added = new boolean[s.size()];
-            findMinimumSetCover(0, bitMask);
-            System.out.println(c.size() + "\n" + c);
+            if(bitMask.cardinality() < universalSetSize) {
+                sPrime = new ArrayDeque<>(c);
+                greedy(universalSetSize, bitMask, new ArrayList<>(s));
+                bound = (int) (c.size()/Math.log(universalSetSize));
+                if(bound > sPrime.size()) lowerBound = bound - sPrime.size();
+                else lowerBound = 1;
+                upperBound = c.size() - sPrime.size();
+                //added = new boolean[s.size()];
+                //findMinimumSetCover(0, bitMask);
+                IntStream.range(lowerBound, upperBound).parallel()
+                    .mapToObj(k -> findMinimumSetCover(k, 0, new BitSet[k], bitMask))
+                    .filter(Objects::nonNull).min(Comparator.comparingInt(List::size))
+                    .ifPresent(bitSets -> {
+                        sPrime.addAll(bitSets);
+                        c = new ArrayDeque<>(sPrime);
+                    });
+            }
             long endTime = System.nanoTime();
-            System.out.println((endTime-startTime)/1000000 + " ms");
+            System.out.println(c.size() + "\n" + c + "\n" + (endTime-startTime)/1000000 + " ms");
         }
         catch(IOException e) {
             e.printStackTrace();
