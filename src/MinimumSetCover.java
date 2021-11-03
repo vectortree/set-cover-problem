@@ -11,7 +11,7 @@ public class MinimumSetCover {
     static Deque<BitSet> sPrime;
     static List<BitSet> s;
     static boolean[] added;
-    static Boolean flag;
+    static boolean flag;
     static int universalSetSize, numberOfSubsets, bound;
     static BitSet bitMask;
 
@@ -33,8 +33,7 @@ public class MinimumSetCover {
     }
 
     static boolean subset(BitSet x) {
-        for(BitSet bs : s) if(subset(x, bs) == 1) return true;
-        return false;
+        return s.stream().anyMatch(bs -> subset(x, bs) == 1);
     }
 
     static void removeRedundantSubsets() {
@@ -48,28 +47,26 @@ public class MinimumSetCover {
     }
 
     static int countOnes(int i) {
-        int count = 0;
-        for(BitSet bitSet : s)
-            if(bitSet.get(i)) ++count;
-        return count;
+        return (int) s.stream().filter(bitSet -> bitSet.get(i)).count();
     }
 
     static BitSet uniqueElements() {
         BitSet bs = new BitSet();
-        IntStream.range(1, universalSetSize+1).parallel().
-                filter(i -> countOnes(i)==1).forEachOrdered(bs::set);
+        IntStream.range(1, universalSetSize+1)
+                .filter(i -> countOnes(i)==1).forEachOrdered(bs::set);
         return bs;
     }
 
     static void addUniqueElementSets() {
         BitSet bs = uniqueElements();
-        for(BitSet bitSet : s) {
+        s.forEach(bitSet -> {
             BitSet x = new BitSet();
             x.or(bitSet);
             x.and(bs);
-            if(x.cardinality()!=0) c.push(bitSet);
-        }
-        for(BitSet bitSet : c) s.remove(bitSet);
+            if(x.cardinality()!=0)
+                c.push(bitSet);
+        });
+        c.forEach(bitSet -> s.remove(bitSet));
     }
 
     static void greedy(int universalSetSize, BitSet bitSet, ArrayList<BitSet> s) {
@@ -86,15 +83,18 @@ public class MinimumSetCover {
     }
 
     static void findMinimumSetCover(int k, BitSet ors) {
-        if(c.size() <= sPrime.size()) return;
-        if(sPrime.size() >= bound && ors.cardinality() == universalSetSize) {
+        int c_size = c.size();
+        int sPrime_size = sPrime.size();
+        int s_size = s.size();
+        if(c_size <= sPrime_size) return;
+        if(sPrime_size >= bound && ors.cardinality() == universalSetSize) {
             c = new ArrayDeque<>(sPrime);
-            flag = Boolean.TRUE;
+            flag = true;
             return;
         }
-        if(universalSetSize > sPrime.size() && c.size()-1 > sPrime.size()) {
-            for(int i=k;i<s.size();++i) {
-                if(universalSetSize <= sPrime.size() || c.size() <= sPrime.size()) return;
+        if(universalSetSize > sPrime_size && c_size-1 > sPrime_size) {
+            for(int i=k;i<s_size;++i) {
+                if(universalSetSize <= sPrime_size) return;
                 if(!added[i]) {
                     BitSet orsCopy = new BitSet();
                     orsCopy.or(ors);
@@ -107,7 +107,7 @@ public class MinimumSetCover {
                     added[i] = false;
                 }
                 if(flag) {
-                    flag = Boolean.FALSE;
+                    flag = false;
                     return;
                 }
             }
@@ -124,33 +124,29 @@ public class MinimumSetCover {
                     Files.readAllLines(Paths.get(pathName));
             universalSetSize = Integer.parseInt(lines.get(0));
             numberOfSubsets = Integer.parseInt(lines.get(1));
-            s = Collections.synchronizedList(new ArrayList<>());
-            IntStream.range(2,lines.size()).parallel().forEach(i -> {
+            s = new ArrayList<>();
+            IntStream.range(2,lines.size()).forEach(i -> {
                 if(!lines.get(i).isEmpty()) {
                     BitSet bs = new BitSet();
-                    Stream.of(lines.get(i).split(" ")).parallel().
-                            mapToInt(Integer::parseInt).forEachOrdered(bs::set);
+                    Stream.of(lines.get(i).split(" "))
+                            .mapToInt(Integer::parseInt).forEachOrdered(bs::set);
                     s.add(bs);
                 }
                 else --numberOfSubsets;
             });
             long startTime = System.nanoTime();
             removeRedundantSubsets();
-            s = new ArrayList<>(s.parallelStream().
-                            sorted(Comparator.comparingInt(BitSet::cardinality).reversed()).
-                            toList());
+            s.sort(Comparator.comparingInt(BitSet::cardinality).reversed());
             c = new ArrayDeque<>();
             addUniqueElementSets();
             bitMask = getBitMask();
             sPrime = new ArrayDeque<>(c);
             greedy(universalSetSize, bitMask, new ArrayList<>(s));
-            //System.out.println(c);
-            flag = Boolean.FALSE;
+            //System.out.println(c.size() + "\n" + c);
             bound = (int) (c.size()/Math.log(universalSetSize));
             added = new boolean[s.size()];
             findMinimumSetCover(0, bitMask);
-            System.out.println(c);
-            System.out.println(c.size());
+            System.out.println(c.size() + "\n" + c);
             long endTime = System.nanoTime();
             System.out.println((endTime-startTime)/1000000 + " ms");
         }
