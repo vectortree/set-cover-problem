@@ -1,6 +1,7 @@
 # Set Cover Problem
 
-Click [here](https://en.wikipedia.org/wiki/Set_cover_problem) to read about the set cover problem.  
+Click [here](https://en.wikipedia.org/wiki/Set_cover_problem) to read about the set cover problem.
+
 This is an implementation for solving the set cover problem that I wrote in Java. It uses several optimization techniques to pass benchmark tests. This was an assignment for my analysis of algorithms course.
 
 When you start the program, you will be prompted to enter the pathname of a test file. Please enter the pathname of a correctly formatted test file.
